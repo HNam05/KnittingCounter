@@ -1,0 +1,48 @@
+{
+  "name": "knitting-counter-overlay",
+  "version": "0.1.0",
+  "description": "Windows-first Electron desktop overlay for counting knitting stitches offline.",
+  "productName": "Knitting Counter Overlay",
+  "main": "./out/main/main.js",
+  "author": "hanne",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit && electron-vite build",
+    "dist": "npm run build && electron-builder --win zip"
+  },
+  "build": {
+    "appId": "com.hanne.knittingcounteroverlay",
+    "productName": "Knitting Counter Overlay",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "signAndEditExecutable": false,
+      "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
+    }
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^36.2.1",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.10"
+  }
+}

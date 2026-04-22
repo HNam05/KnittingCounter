@@ -1,0 +1,221 @@
+import path from 'node:path'
+import { BrowserWindow, type Rectangle } from 'electron'
+import type { AppSnapshot } from '../shared/types'
+import type { AppStore } from './store'
+
+const MANAGER_MIN_WIDTH = 760
+const MANAGER_MIN_HEIGHT = 540
+const DEFAULT_MANAGER_WIDTH = 940
+const DEFAULT_MANAGER_HEIGHT = 660
+
+export class WindowController {
+  private readonly store: AppStore
+  private mainWindow: BrowserWindow | null = null
+  private managerBounds: Rectangle | null = null
+  private moveTimeout: NodeJS.Timeout | null = null
+  private resizeTimeout: NodeJS.Timeout | null = null
+
+  constructor(store: AppStore) {
+    this.store = store
+  }
+
+  getWindow(): BrowserWindow | null {
+    return this.mainWindow
+  }
+
+  async createWindow(): Promise<BrowserWindow> {
+    const snapshot = this.store.getSnapshot()
+    const { x, y, width, height } = snapshot.settings.overlay
+
+    this.mainWindow = new BrowserWindow({
+      x,
+      y,
+      width,
+      height,
+      minWidth: width,
+      minHeight: height,
+      maxWidth: width,
+      maxHeight: height,
+      show: false,
+      frame: false,
+      resizable: false,
+      maximizable: false,
+      minimizable: true,
+      fullscreenable: false,
+      alwaysOnTop: true,
+      skipTaskbar: false,
+      autoHideMenuBar: true,
+      backgroundColor: '#ffe8ef',
+      title: 'Knitting Counter Overlay',
+      webPreferences: {
+        preload: path.join(__dirname, '../preload/preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        devTools: true
+      }
+    })
+
+    this.mainWindow.removeMenu()
+    this.registerWindowEvents()
+
+    if (process.env.ELECTRON_RENDERER_URL) {
+      await this.mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    } else {
+      await this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    }
+
+    this.mainWindow.once('ready-to-show', () => {
+      this.mainWindow?.show()
+      this.focusManagerIfNeeded(this.store.getSnapshot())
+    })
+
+    this.applySnapshot(snapshot)
+    return this.mainWindow
+  }
+
+  applySnapshot(snapshot: AppSnapshot): void {
+    const window = this.mainWindow
+
+    if (!window || window.isDestroyed()) {
+      return
+    }
+
+    const { locked, mode, x, y, width, height } = snapshot.settings.overlay
+
+    if (mode === 'compact') {
+      const bounds = window.getBounds()
+
+      if (bounds.x !== x || bounds.y !== y || bounds.width !== width || bounds.height !== height) {
+        window.setBounds({ x, y, width, height })
+      }
+
+      window.setResizable(false)
+      window.setMinimumSize(width, height)
+      window.setMaximumSize(width, height)
+      window.setAlwaysOnTop(true, 'floating')
+      window.setIgnoreMouseEvents(locked, locked ? { forward: true } : undefined)
+    } else {
+      const nextBounds = this.resolveManagerBounds(x, y)
+      const bounds = window.getBounds()
+
+      if (
+        bounds.x !== nextBounds.x ||
+        bounds.y !== nextBounds.y ||
+        bounds.width !== nextBounds.width ||
+        bounds.height !== nextBounds.height
+      ) {
+        window.setBounds(nextBounds)
+      }
+
+      window.setResizable(true)
+      window.setMinimumSize(MANAGER_MIN_WIDTH, MANAGER_MIN_HEIGHT)
+      window.setMaximumSize(10000, 10000)
+      window.setAlwaysOnTop(false)
+      window.setIgnoreMouseEvents(false)
+    }
+  }
+
+  focusManager(): void {
+    const snapshot = this.store.getSnapshot()
+    this.focusManagerIfNeeded(snapshot)
+  }
+
+  focusWindow(): void {
+    if (!this.mainWindow) {
+      return
+    }
+
+    const snapshot = this.store.getSnapshot()
+
+    if (snapshot.settings.overlay.mode === 'compact' && snapshot.settings.overlay.locked) {
+      void this.store.setOverlayLocked(false)
+    }
+
+    if (this.mainWindow.isMinimized()) {
+      this.mainWindow.restore()
+    }
+
+    this.mainWindow.show()
+    this.mainWindow.focus()
+  }
+
+  private focusManagerIfNeeded(snapshot: AppSnapshot): void {
+    if (snapshot.settings.overlay.mode !== 'manager' || !this.mainWindow) {
+      return
+    }
+
+    this.focusWindow()
+  }
+
+  private resolveManagerBounds(x: number, y: number): Rectangle {
+    if (this.managerBounds) {
+      return this.managerBounds
+    }
+
+    return {
+      x: Math.max(0, x - 32),
+      y: Math.max(0, y - 24),
+      width: DEFAULT_MANAGER_WIDTH,
+      height: DEFAULT_MANAGER_HEIGHT
+    }
+  }
+
+  private registerWindowEvents(): void {
+    const window = this.mainWindow
+
+    if (!window) {
+      return
+    }
+
+    window.on('move', () => {
+      if (this.moveTimeout) {
+        clearTimeout(this.moveTimeout)
+      }
+
+      this.moveTimeout = setTimeout(() => {
+        const currentWindow = this.mainWindow
+
+        if (!currentWindow || currentWindow.isDestroyed()) {
+          return
+        }
+
+        const bounds = currentWindow.getBounds()
+        const mode = this.store.getSnapshot().settings.overlay.mode
+
+        if (mode === 'manager') {
+          this.managerBounds = {
+            ...this.resolveManagerBounds(bounds.x, bounds.y),
+            x: bounds.x,
+            y: bounds.y
+          }
+        }
+
+        void this.store.setOverlayPosition(bounds.x, bounds.y)
+      }, 120)
+    })
+
+    window.on('resize', () => {
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout)
+      }
+
+      this.resizeTimeout = setTimeout(() => {
+        const currentWindow = this.mainWindow
+
+        if (!currentWindow || currentWindow.isDestroyed()) {
+          return
+        }
+
+        const bounds = currentWindow.getBounds()
+        const mode = this.store.getSnapshot().settings.overlay.mode
+
+        if (mode === 'compact') {
+          void this.store.setOverlaySize(bounds.width, bounds.height)
+          return
+        }
+
+        this.managerBounds = bounds
+      }, 120)
+    })
+  }
+}
