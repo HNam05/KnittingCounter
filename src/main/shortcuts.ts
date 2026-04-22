@@ -14,6 +14,10 @@ interface HotkeyRegistration {
   handler: () => void
 }
 
+function runInBackground(action: Promise<unknown>): void {
+  void action.catch(() => undefined)
+}
+
 function createSinglePressHandler(handler: () => void): () => void {
   let isLatched = false
   let firstTriggerAt = 0
@@ -79,28 +83,28 @@ export function registerGlobalHotkeys(store: AppStore, windowController: WindowC
       action: 'increment',
       accelerator: hotkeys.increment,
       handler: createSinglePressHandler(() => {
-        void store.incrementActiveProject()
+        runInBackground(store.incrementActiveProject())
       })
     },
     {
       action: 'decrement',
       accelerator: hotkeys.decrement,
       handler: createSinglePressHandler(() => {
-        void store.decrementActiveProject()
+        runInBackground(store.decrementActiveProject())
       })
     },
     {
       action: 'nextProject',
       accelerator: hotkeys.nextProject,
       handler: createSinglePressHandler(() => {
-        void store.nextProject()
+        runInBackground(store.nextProject())
       })
     },
     {
       action: 'toggleExpand',
       accelerator: hotkeys.toggleExpand,
       handler: () => {
-        void store.showManager()
+        runInBackground(store.showManager())
         windowController.focusManager()
       }
     }

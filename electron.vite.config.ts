@@ -5,6 +5,12 @@ export default defineConfig({
   main: {},
   preload: {},
   renderer: {
-    plugins: [react()]
+    plugins: [react()],
+    server: {
+      host: '127.0.0.1'
+    },
+    preview: {
+      host: '127.0.0.1'
+    }
   }
 })

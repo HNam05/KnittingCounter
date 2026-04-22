@@ -1,5 +1,6 @@
 import { app, Menu } from 'electron'
 import { broadcastSnapshot, registerIpcHandlers } from './ipc'
+import { getBundledRendererEntryPath, registerPermissionGuards } from './security'
 import { loadStateFile } from './storage'
 import { AppStore } from './store'
 import { registerGlobalHotkeys, unregisterGlobalHotkeys } from './shortcuts'
@@ -12,12 +13,17 @@ let windowController: WindowController | null = null
 
 async function bootstrap(): Promise<void> {
   Menu.setApplicationMenu(null)
+  registerPermissionGuards()
 
   const { state, dataFilePath, storageWarning } = await loadStateFile(app.getPath('userData'))
   store = new AppStore(state, dataFilePath, storageWarning)
   windowController = new WindowController(store)
 
-  registerIpcHandlers(store)
+  registerIpcHandlers(
+    store,
+    () => windowController?.getWindow() ?? null,
+    getBundledRendererEntryPath()
+  )
 
   store.on('changed', (snapshot) => {
     windowController?.applySnapshot(snapshot)

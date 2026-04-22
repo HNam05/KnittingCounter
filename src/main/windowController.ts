@@ -1,7 +1,8 @@
 import path from 'node:path'
-import { BrowserWindow, type Rectangle } from 'electron'
+import { app, BrowserWindow, type Rectangle } from 'electron'
 import type { AppSnapshot } from '../shared/types'
 import type { AppStore } from './store'
+import { getBundledRendererEntryPath, hardenWindowNavigation, resolveRendererTarget } from './security'
 
 const MANAGER_MIN_WIDTH = 760
 const MANAGER_MIN_HEIGHT = 540
@@ -26,6 +27,7 @@ export class WindowController {
   async createWindow(): Promise<BrowserWindow> {
     const snapshot = this.store.getSnapshot()
     const { x, y, width, height } = snapshot.settings.overlay
+    const bundledRendererPath = getBundledRendererEntryPath()
 
     this.mainWindow = new BrowserWindow({
       x,
@@ -51,17 +53,21 @@ export class WindowController {
         preload: path.join(__dirname, '../preload/preload.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        devTools: true
+        sandbox: true,
+        devTools: !app.isPackaged
       }
     })
 
     this.mainWindow.removeMenu()
     this.registerWindowEvents()
+    hardenWindowNavigation(this.mainWindow, bundledRendererPath)
 
-    if (process.env.ELECTRON_RENDERER_URL) {
-      await this.mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    const rendererTarget = resolveRendererTarget(bundledRendererPath)
+
+    if (rendererTarget.kind === 'url') {
+      await this.mainWindow.loadURL(rendererTarget.value)
     } else {
-      await this.mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+      await this.mainWindow.loadFile(rendererTarget.value)
     }
 
     this.mainWindow.once('ready-to-show', () => {
@@ -128,7 +134,7 @@ export class WindowController {
     const snapshot = this.store.getSnapshot()
 
     if (snapshot.settings.overlay.mode === 'compact' && snapshot.settings.overlay.locked) {
-      void this.store.setOverlayLocked(false)
+      void this.store.setOverlayLocked(false).catch(() => undefined)
     }
 
     if (this.mainWindow.isMinimized()) {
@@ -190,7 +196,7 @@ export class WindowController {
           }
         }
 
-        void this.store.setOverlayPosition(bounds.x, bounds.y)
+        void this.store.setOverlayPosition(bounds.x, bounds.y).catch(() => undefined)
       }, 120)
     })
 
@@ -210,7 +216,7 @@ export class WindowController {
         const mode = this.store.getSnapshot().settings.overlay.mode
 
         if (mode === 'compact') {
-          void this.store.setOverlaySize(bounds.width, bounds.height)
+          void this.store.setOverlaySize(bounds.width, bounds.height).catch(() => undefined)
           return
         }
 

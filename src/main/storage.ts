@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { AppSettings, PersistedState, Project } from '../shared/types'
 
@@ -124,32 +124,152 @@ async function ensureParentDirectory(filePath: string): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true })
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === 'object' && error !== null && 'code' in error
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath)
+    return true
+  } catch (error) {
+    if (isErrnoException(error) && error.code === 'ENOENT') {
+      return false
+    }
+
+    throw error
+  }
+}
+
+async function writeTextFileSynced(filePath: string, payload: string): Promise<void> {
+  await writeFile(filePath, payload, 'utf8')
+
+  const handle = await open(filePath, 'r')
+
+  try {
+    await handle.sync()
+  } finally {
+    await handle.close()
+  }
+}
+
 export async function writeStateFile(filePath: string, state: PersistedState): Promise<void> {
   await ensureParentDirectory(filePath)
 
   const tempFilePath = `${filePath}.tmp`
+  const backupFilePath = `${filePath}.bak`
   const payload = `${JSON.stringify(state, null, 2)}\n`
+  const hasExistingFile = await fileExists(filePath)
 
-  await writeFile(tempFilePath, payload, 'utf8')
+  await writeTextFileSynced(tempFilePath, payload)
+
+  if (hasExistingFile) {
+    await rm(backupFilePath, { force: true })
+    await rename(filePath, backupFilePath)
+  }
 
   try {
     await rename(tempFilePath, filePath)
-  } catch {
-    await writeFile(filePath, payload, 'utf8')
+  } catch (error) {
+    if (hasExistingFile) {
+      try {
+        await rename(backupFilePath, filePath)
+      } catch {
+        // Preserve the backup file if the rollback fails so the last known-good
+        // state remains available for manual recovery.
+      }
+    }
+
     await rm(tempFilePath, { force: true })
+    throw error
+  }
+
+  if (hasExistingFile) {
+    await rm(backupFilePath, { force: true })
+  }
+}
+
+async function recoverInvalidStoredData(userDataPath: string, dataFilePath: string): Promise<LoadStateResult> {
+  const state = createDefaultState()
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const backupPath = path.join(userDataPath, `state.corrupt-${timestamp}.json`)
+
+  try {
+    await ensureParentDirectory(dataFilePath)
+    await rename(dataFilePath, backupPath)
+  } catch {
+    return {
+      state,
+      dataFilePath,
+      storageWarning:
+        `Stored data was invalid, but the app could not move it to a backup at ${backupPath}. ` +
+        `Fix or move ${dataFilePath} before saving again.`
+    }
+  }
+
+  try {
+    await writeStateFile(dataFilePath, state)
+  } catch {
+    try {
+      await rename(backupPath, dataFilePath)
+    } catch {
+      // Keep the backup file in place if the restore also fails.
+    }
+
+    return {
+      state,
+      dataFilePath,
+      storageWarning:
+        `Stored data was invalid and a backup was created at ${backupPath}, ` +
+        `but the fresh state file could not be written.`
+    }
+  }
+
+  return {
+    state,
+    dataFilePath,
+    storageWarning: `Stored data was invalid. A fresh file was created and the previous file was backed up to ${backupPath}.`
   }
 }
 
 export async function loadStateFile(userDataPath: string): Promise<LoadStateResult> {
   const dataFilePath = path.join(userDataPath, STATE_FILE_NAME)
+  const initialState = createDefaultState()
+  let raw: string
 
   try {
-    const raw = await readFile(dataFilePath, 'utf8')
+    raw = await readFile(dataFilePath, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      try {
+        await writeStateFile(dataFilePath, initialState)
+        return {
+          state: initialState,
+          dataFilePath,
+          storageWarning: null
+        }
+      } catch {
+        return {
+          state: initialState,
+          dataFilePath,
+          storageWarning: `A new data file could not be created at ${dataFilePath}.`
+        }
+      }
+    }
+
+    return {
+      state: initialState,
+      dataFilePath,
+      storageWarning: `Stored data could not be read from ${dataFilePath}. Check file permissions or close any program locking the file and try again.`
+    }
+  }
+
+  try {
     const parsed = JSON.parse(raw) as unknown
     const state = normalizeState(parsed)
 
     if (!state) {
-      throw new Error('Stored data failed validation.')
+      return recoverInvalidStoredData(userDataPath, dataFilePath)
     }
 
     return {
@@ -158,33 +278,10 @@ export async function loadStateFile(userDataPath: string): Promise<LoadStateResu
       storageWarning: null
     }
   } catch (error) {
-    const state = createDefaultState()
-
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await writeStateFile(dataFilePath, state)
-      return {
-        state,
-        dataFilePath,
-        storageWarning: null
-      }
+    if (error instanceof SyntaxError) {
+      return recoverInvalidStoredData(userDataPath, dataFilePath)
     }
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const backupPath = path.join(userDataPath, `state.corrupt-${timestamp}.json`)
-
-    try {
-      await ensureParentDirectory(dataFilePath)
-      await rename(dataFilePath, backupPath)
-    } catch {
-      // If the rename fails, the fresh state file still lets the app recover.
-    }
-
-    await writeStateFile(dataFilePath, state)
-
-    return {
-      state,
-      dataFilePath,
-      storageWarning: `Stored data was unreadable. A fresh file was created and the previous file was backed up near ${backupPath}.`
-    }
+    throw error
   }
 }

@@ -34,10 +34,12 @@ These steps are only for building or modifying the app from source.
 
 ### Install dependencies
 
+Use `npm ci` so local installs stay pinned to the reviewed lockfile.
+
 If PowerShell script execution is blocked on your machine, use `cmd /c`:
 
 ```powershell
-cmd /c npm install
+cmd /c npm ci
 ```
 
 ## Run locally
@@ -56,16 +58,27 @@ cmd /c npm run build
 
 ## Build the portable Windows release
 
-This command creates a standalone Windows ZIP build in `release/`:
+For a local packaging check, this command creates an unsigned Windows ZIP build in `release/` and writes a `SHA256SUMS.txt` manifest for the generated `.zip` and `.exe` artifacts:
 
 ```powershell
 cmd /c npm run dist
+```
+
+For a distributable signed release, run:
+
+```powershell
+cmd /c npm run dist:signed
 ```
 
 Output:
 
 - `release/Knitting Counter Overlay-0.1.0-windows-x64.zip`
 - `release/win-unpacked/Knitting Counter Overlay.exe`
+- `release/SHA256SUMS.txt`
+
+`npm run dist` disables Windows executable editing so local packaging works without the extra code-signing toolchain requirements on developer machines.
+
+`npm run dist:signed` keeps Electron Builder's signing path enabled. If Windows code-signing credentials are configured for `electron-builder`, the generated executable is signed during packaging. Distributed releases should ship from this signed path together with the checksum manifest.
 
 ## Features in the MVP
 
@@ -419,8 +432,12 @@ The app keeps the Electron surface intentionally narrow:
 
 - `contextIsolation: true`
 - `nodeIntegration: false`
+- `sandbox: true`
 - no direct Node.js access in the renderer
 - no remote content loading in production
+- a restrictive renderer CSP
+- denied navigation, popups, and permission prompts by default
+- validated IPC senders and payloads in the main process
 - all mutations go through the preload bridge and IPC handlers
 
 This keeps the project simple while still following the normal secure Electron structure.

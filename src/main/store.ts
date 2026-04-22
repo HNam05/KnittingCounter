@@ -4,17 +4,20 @@ import { COMPACT_OVERLAY_HEIGHT, COMPACT_OVERLAY_WIDTH, writeStateFile } from '.
 import type { AppSnapshot, HotkeyStatus, PersistedState, Project, RuntimeState, WindowMode } from '../shared/types'
 
 type PersistedMutation = (state: PersistedState) => boolean
+const SAVE_FAILURE_TEMPLATE = 'The app could not save changes to %PATH%.'
 
 export class AppStore extends EventEmitter {
   private readonly dataFilePath: string
+  private readonly initialStorageWarning: string | null
   private state: PersistedState
   private runtime: RuntimeState
-  private saveQueue: Promise<void> = Promise.resolve()
+  private mutationQueue: Promise<void> = Promise.resolve()
 
   constructor(initialState: PersistedState, dataFilePath: string, storageWarning: string | null) {
     super()
     this.state = initialState
     this.dataFilePath = dataFilePath
+    this.initialStorageWarning = storageWarning
     this.runtime = {
       storageWarning,
       hotkeyStatuses: [],
@@ -257,35 +260,50 @@ export class AppStore extends EventEmitter {
   }
 
   private async updatePersistedState(mutation: PersistedMutation): Promise<AppSnapshot> {
-    const didChange = mutation(this.state)
+    let nextSnapshot: AppSnapshot | null = null
 
-    if (!didChange) {
-      return this.getSnapshot()
-    }
-
-    this.emitChange()
-    await this.persist()
-    return this.getSnapshot()
-  }
-
-  private async persist(): Promise<void> {
-    const nextState = structuredClone(this.state)
-
-    this.saveQueue = this.saveQueue
+    const operation = this.mutationQueue
       .catch(() => undefined)
       .then(async () => {
+        const nextState = structuredClone(this.state)
+        const didChange = mutation(nextState)
+
+        if (!didChange) {
+          nextSnapshot = this.getSnapshot()
+          return
+        }
+
         try {
           await writeStateFile(this.dataFilePath, nextState)
         } catch {
-          this.runtime.storageWarning = `The app could not save changes to ${this.dataFilePath}.`
-          this.emitChange()
+          this.runtime.storageWarning = this.createSaveFailureWarning()
+          nextSnapshot = this.getSnapshot()
+          this.emitChange(nextSnapshot)
+          throw new Error('The app could not save this change.')
         }
+
+        this.state = nextState
+        this.runtime.storageWarning = this.initialStorageWarning
+        nextSnapshot = this.getSnapshot()
+        this.emitChange(nextSnapshot)
       })
 
-    await this.saveQueue
+    this.mutationQueue = operation.then(
+      () => undefined,
+      () => undefined
+    )
+
+    await operation
+    return nextSnapshot ?? this.getSnapshot()
   }
 
-  private emitChange(): void {
-    this.emit('changed', this.getSnapshot())
+  private createSaveFailureWarning(): string {
+    const saveFailureWarning = SAVE_FAILURE_TEMPLATE.replace('%PATH%', this.dataFilePath)
+
+    return this.initialStorageWarning ? `${this.initialStorageWarning} ${saveFailureWarning}` : saveFailureWarning
+  }
+
+  private emitChange(snapshot = this.getSnapshot()): void {
+    this.emit('changed', snapshot)
   }
 }
