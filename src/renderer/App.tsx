@@ -157,6 +157,10 @@ export default function App(): JSX.Element {
       onResetProject={(projectId) => runAction(() => window.knittingCounter.resetProject({ projectId }))}
       onSelectProject={(projectId) => runAction(() => window.knittingCounter.setActiveProject({ projectId }))}
       onSetLocked={(locked) => runAction(() => window.knittingCounter.setOverlayLocked({ locked }))}
+      onUpdateProjectIcon={(projectId, iconId) =>
+        runAction(() => window.knittingCounter.updateProjectIcon({ projectId, iconId }))
+      }
+      onUpdateNotes={(projectId, notes) => runAction(() => window.knittingCounter.updateProjectNotes({ projectId, notes }))}
       onQuitApp={() => runAction(() => window.knittingCounter.quitApp())}
       snapshot={snapshot}
     />

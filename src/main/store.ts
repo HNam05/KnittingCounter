@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { randomUUID } from 'node:crypto'
-import { COMPACT_OVERLAY_HEIGHT, COMPACT_OVERLAY_WIDTH, writeStateFile } from './storage'
+import { COMPACT_OVERLAY_HEIGHT, COMPACT_OVERLAY_WIDTH, PROJECT_NOTES_MAX_LENGTH, writeStateFile } from './storage'
+import type { ProjectIconId } from '../shared/projectIcons'
 import type { AppSnapshot, HotkeyStatus, PersistedState, Project, RuntimeState, WindowMode } from '../shared/types'
 
 type PersistedMutation = (state: PersistedState) => boolean
@@ -49,6 +50,8 @@ export class AppStore extends EventEmitter {
       const project: Project = {
         id: randomUUID(),
         name: trimmedName,
+        iconId: null,
+        notes: '',
         count: 0,
         createdAt: timestamp,
         updatedAt: timestamp
@@ -79,6 +82,34 @@ export class AppStore extends EventEmitter {
       }
 
       project.name = trimmedName
+      return true
+    })
+  }
+
+  async updateProjectNotes(projectId: string, notes: string): Promise<AppSnapshot> {
+    const normalizedNotes = notes.trimEnd().slice(0, PROJECT_NOTES_MAX_LENGTH)
+
+    return this.updatePersistedState((state) => {
+      const project = state.projects.find((item) => item.id === projectId)
+
+      if (!project || project.notes === normalizedNotes) {
+        return false
+      }
+
+      project.notes = normalizedNotes
+      return true
+    })
+  }
+
+  async updateProjectIcon(projectId: string, iconId: ProjectIconId | null): Promise<AppSnapshot> {
+    return this.updatePersistedState((state) => {
+      const project = state.projects.find((item) => item.id === projectId)
+
+      if (!project || project.iconId === iconId) {
+        return false
+      }
+
+      project.iconId = iconId
       return true
     })
   }

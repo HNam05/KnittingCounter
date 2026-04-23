@@ -1,4 +1,5 @@
 import type { Project } from '../../shared/types'
+import { getProjectIconSrc } from '../projectIcons'
 
 interface ProjectListProps {
   projects: Project[]
@@ -19,6 +20,8 @@ export function ProjectList({ projects, activeProjectId, onSelectProject }: Proj
     <div className="project-list">
       {projects.map((project) => {
         const isActive = project.id === activeProjectId
+        const iconSrc = getProjectIconSrc(project.iconId)
+        const placeholderLabel = project.name.trim().slice(0, 1).toUpperCase() || '?'
 
         return (
           <button
@@ -27,7 +30,16 @@ export function ProjectList({ projects, activeProjectId, onSelectProject }: Proj
             onClick={() => onSelectProject(project.id)}
             type="button"
           >
-            <span className="project-list__name">{project.name}</span>
+            <span className="project-list__main">
+              <span className="project-list__icon" aria-hidden="true">
+                {iconSrc ? (
+                  <img className="project-list__icon-image" src={iconSrc} alt="" />
+                ) : (
+                  <span className="project-list__icon-fallback">{placeholderLabel}</span>
+                )}
+              </span>
+              <span className="project-list__name">{project.name}</span>
+            </span>
             <span className="project-list__count">{project.count}</span>
           </button>
         )

@@ -3,6 +3,8 @@ export const IPC_CHANNELS = {
   stateChanged: 'app:state-changed',
   createProject: 'projects:create',
   renameProject: 'projects:rename',
+  updateProjectNotes: 'projects:update-notes',
+  updateProjectIcon: 'projects:update-icon',
   deleteProject: 'projects:delete',
   resetProject: 'projects:reset',
   setActiveProject: 'projects:set-active',

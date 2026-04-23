@@ -1,10 +1,12 @@
 import { access, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { isProjectIconId } from '../shared/projectIcons'
 import type { AppSettings, PersistedState, Project } from '../shared/types'
 
 const STATE_FILE_NAME = 'state.json'
 export const COMPACT_OVERLAY_WIDTH = 252
 export const COMPACT_OVERLAY_HEIGHT = 156
+export const PROJECT_NOTES_MAX_LENGTH = 2000
 
 const defaultSettings: AppSettings = {
   hotkeys: {
@@ -50,6 +52,8 @@ function isProject(value: unknown): value is Project {
     isRecord(value) &&
     typeof value.id === 'string' &&
     typeof value.name === 'string' &&
+    (value.iconId === null || typeof value.iconId === 'string' || typeof value.iconId === 'undefined') &&
+    (typeof value.notes === 'string' || typeof value.notes === 'undefined') &&
     typeof value.count === 'number' &&
     Number.isFinite(value.count) &&
     value.count >= 0 &&
@@ -65,6 +69,8 @@ function normalizeState(value: unknown): PersistedState | null {
 
   const projects = value.projects.filter(isProject).map((project) => ({
     ...project,
+    iconId: isProjectIconId(project.iconId) ? project.iconId : null,
+    notes: typeof project.notes === 'string' ? project.notes.slice(0, PROJECT_NOTES_MAX_LENGTH) : '',
     count: Math.max(0, Math.floor(project.count))
   }))
 

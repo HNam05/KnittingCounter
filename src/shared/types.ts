@@ -1,9 +1,13 @@
+import type { ProjectIconId } from './projectIcons'
+
 export type WindowMode = 'compact' | 'manager'
 export type HotkeyAction = 'increment' | 'decrement' | 'nextProject' | 'toggleExpand'
 
 export interface Project {
   id: string
   name: string
+  iconId: ProjectIconId | null
+  notes: string
   count: number
   createdAt: string
   updatedAt: string
@@ -68,6 +72,16 @@ export interface CreateProjectInput {
 export interface RenameProjectInput {
   projectId: string
   name: string
+}
+
+export interface UpdateProjectNotesInput {
+  projectId: string
+  notes: string
+}
+
+export interface UpdateProjectIconInput {
+  projectId: string
+  iconId: ProjectIconId | null
 }
 
 export interface DeleteProjectInput {

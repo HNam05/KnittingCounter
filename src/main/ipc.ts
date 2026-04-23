@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { isProjectIconId, type ProjectIconId } from '../shared/projectIcons'
 import { IPC_CHANNELS } from '../shared/ipc'
 import type {
   AppSnapshot,
@@ -8,10 +9,13 @@ import type {
   ResetProjectInput,
   SetActiveProjectInput,
   SetModeInput,
-  SetOverlayLockedInput
+  SetOverlayLockedInput,
+  UpdateProjectIconInput,
+  UpdateProjectNotesInput
 } from '../shared/types'
 import type { AppStore } from './store'
 import { assertTrustedIpcSender } from './security'
+import { PROJECT_NOTES_MAX_LENGTH } from './storage'
 
 const PROJECT_NAME_MAX_LENGTH = 60
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -38,6 +42,34 @@ function readProjectName(input: unknown): string {
   }
 
   return trimmedName
+}
+
+function readProjectNotes(input: unknown): string {
+  if (!isRecord(input) || typeof input.notes !== 'string') {
+    throw new Error('Invalid project notes payload.')
+  }
+
+  if (input.notes.length > PROJECT_NOTES_MAX_LENGTH) {
+    throw new Error(`Project notes must be at most ${PROJECT_NOTES_MAX_LENGTH} characters.`)
+  }
+
+  return input.notes.trimEnd()
+}
+
+function readProjectIconId(input: unknown): ProjectIconId | null {
+  if (!isRecord(input)) {
+    throw new Error('Invalid project icon payload.')
+  }
+
+  if (input.iconId === null) {
+    return null
+  }
+
+  if (!isProjectIconId(input.iconId)) {
+    throw new Error('Invalid project icon.')
+  }
+
+  return input.iconId
 }
 
 function readProjectId(input: unknown): string {
@@ -90,6 +122,8 @@ export function registerIpcHandlers(store: AppStore, getWindow: WindowGetter, bu
   ipcMain.removeHandler(IPC_CHANNELS.getState)
   ipcMain.removeHandler(IPC_CHANNELS.createProject)
   ipcMain.removeHandler(IPC_CHANNELS.renameProject)
+  ipcMain.removeHandler(IPC_CHANNELS.updateProjectNotes)
+  ipcMain.removeHandler(IPC_CHANNELS.updateProjectIcon)
   ipcMain.removeHandler(IPC_CHANNELS.deleteProject)
   ipcMain.removeHandler(IPC_CHANNELS.resetProject)
   ipcMain.removeHandler(IPC_CHANNELS.setActiveProject)
@@ -113,6 +147,18 @@ export function registerIpcHandlers(store: AppStore, getWindow: WindowGetter, bu
     const projectId = readProjectId(input)
     assertProjectExists(store, projectId)
     return store.renameProject(projectId, readProjectName(input))
+  })
+  ipcMain.handle(IPC_CHANNELS.updateProjectNotes, (event, input: UpdateProjectNotesInput) => {
+    assertTrustedEvent(event, getWindow, bundledRendererPath)
+    const projectId = readProjectId(input)
+    assertProjectExists(store, projectId)
+    return store.updateProjectNotes(projectId, readProjectNotes(input))
+  })
+  ipcMain.handle(IPC_CHANNELS.updateProjectIcon, (event, input: UpdateProjectIconInput) => {
+    assertTrustedEvent(event, getWindow, bundledRendererPath)
+    const projectId = readProjectId(input)
+    assertProjectExists(store, projectId)
+    return store.updateProjectIcon(projectId, readProjectIconId(input))
   })
   ipcMain.handle(IPC_CHANNELS.deleteProject, (event, input: DeleteProjectInput) => {
     assertTrustedEvent(event, getWindow, bundledRendererPath)

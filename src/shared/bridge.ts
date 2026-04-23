@@ -6,7 +6,9 @@ import type {
   ResetProjectInput,
   SetActiveProjectInput,
   SetModeInput,
-  SetOverlayLockedInput
+  SetOverlayLockedInput,
+  UpdateProjectIconInput,
+  UpdateProjectNotesInput
 } from './types'
 
 export interface KnittingCounterApi {
@@ -14,6 +16,8 @@ export interface KnittingCounterApi {
   subscribeState: (listener: (snapshot: AppSnapshot) => void) => () => void
   createProject: (input: CreateProjectInput) => Promise<AppSnapshot>
   renameProject: (input: RenameProjectInput) => Promise<AppSnapshot>
+  updateProjectNotes: (input: UpdateProjectNotesInput) => Promise<AppSnapshot>
+  updateProjectIcon: (input: UpdateProjectIconInput) => Promise<AppSnapshot>
   deleteProject: (input: DeleteProjectInput) => Promise<AppSnapshot>
   resetProject: (input: ResetProjectInput) => Promise<AppSnapshot>
   setActiveProject: (input: SetActiveProjectInput) => Promise<AppSnapshot>

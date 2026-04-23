@@ -9,7 +9,9 @@ import type {
   ResetProjectInput,
   SetActiveProjectInput,
   SetModeInput,
-  SetOverlayLockedInput
+  SetOverlayLockedInput,
+  UpdateProjectIconInput,
+  UpdateProjectNotesInput
 } from '../shared/types'
 
 const api: KnittingCounterApi = {
@@ -27,6 +29,8 @@ const api: KnittingCounterApi = {
   },
   createProject: (input: CreateProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.createProject, input),
   renameProject: (input: RenameProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.renameProject, input),
+  updateProjectNotes: (input: UpdateProjectNotesInput) => ipcRenderer.invoke(IPC_CHANNELS.updateProjectNotes, input),
+  updateProjectIcon: (input: UpdateProjectIconInput) => ipcRenderer.invoke(IPC_CHANNELS.updateProjectIcon, input),
   deleteProject: (input: DeleteProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.deleteProject, input),
   resetProject: (input: ResetProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.resetProject, input),
   setActiveProject: (input: SetActiveProjectInput) => ipcRenderer.invoke(IPC_CHANNELS.setActiveProject, input),
