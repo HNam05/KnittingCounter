@@ -145,6 +145,10 @@ export class WindowController {
     this.mainWindow.focus()
   }
 
+  forceInteractive(): void {
+    this.mainWindow?.setIgnoreMouseEvents(false)
+  }
+
   private focusManagerIfNeeded(snapshot: AppSnapshot): void {
     if (snapshot.settings.overlay.mode !== 'manager' || !this.mainWindow) {
       return

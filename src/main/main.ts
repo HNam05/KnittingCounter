@@ -32,7 +32,11 @@ async function bootstrap(): Promise<void> {
 
   await windowController.createWindow()
   if (store.getSnapshot().settings.overlay.mode === 'compact' && store.getSnapshot().settings.overlay.locked) {
-    await store.setOverlayLocked(false)
+    try {
+      await store.setOverlayLocked(false)
+    } catch {
+      windowController.forceInteractive()
+    }
   }
   registerGlobalHotkeys(store, windowController)
   broadcastSnapshot(windowController.getWindow(), store.getSnapshot())

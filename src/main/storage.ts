@@ -144,7 +144,7 @@ async function fileExists(filePath: string): Promise<boolean> {
 async function writeTextFileSynced(filePath: string, payload: string): Promise<void> {
   await writeFile(filePath, payload, 'utf8')
 
-  const handle = await open(filePath, 'r')
+  const handle = await open(filePath, 'r+')
 
   try {
     await handle.sync()
