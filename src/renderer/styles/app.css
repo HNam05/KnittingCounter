@@ -544,6 +544,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);
   min-height: 0;
+  -webkit-app-region: no-drag;
 }
 
 .manager-sidebar {
@@ -563,6 +564,10 @@ textarea:focus-visible {
   padding: 22px;
   min-height: 0;
   overflow: auto;
+}
+
+.manager-content > * {
+  flex-shrink: 0;
 }
 
 .sidebar-section,
@@ -725,6 +730,7 @@ textarea:focus-visible {
   overflow: hidden;
   padding: 28px 30px 26px;
   border-radius: 28px;
+  -webkit-app-region: no-drag;
 }
 
 .detail-surface::before {
@@ -754,6 +760,8 @@ textarea:focus-visible {
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
   gap: 20px;
   align-items: stretch;
+  position: relative;
+  z-index: 2;
 }
 
 .detail-grid {
@@ -806,6 +814,10 @@ textarea:focus-visible {
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(255, 252, 253, 0.76);
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
 }
 
 .notes-panel__header,
@@ -831,6 +843,10 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.82);
   color: var(--text);
   line-height: 1.5;
+  position: relative;
+  z-index: 4;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
 }
 
 .notes-input::placeholder {

@@ -1,13 +1,13 @@
 import path from 'node:path'
-import { app, BrowserWindow, type Rectangle } from 'electron'
+import { app, BrowserWindow, screen, type Rectangle } from 'electron'
 import type { AppSnapshot } from '../shared/types'
 import type { AppStore } from './store'
 import { getBundledRendererEntryPath, hardenWindowNavigation, resolveRendererTarget } from './security'
 
-const MANAGER_MIN_WIDTH = 760
-const MANAGER_MIN_HEIGHT = 540
-const DEFAULT_MANAGER_WIDTH = 940
-const DEFAULT_MANAGER_HEIGHT = 660
+const MANAGER_MIN_WIDTH = 900
+const MANAGER_MIN_HEIGHT = 760
+const DEFAULT_MANAGER_WIDTH = 1120
+const DEFAULT_MANAGER_HEIGHT = 920
 
 export class WindowController {
   private readonly store: AppStore
@@ -103,6 +103,7 @@ export class WindowController {
     } else {
       const nextBounds = this.resolveManagerBounds(x, y)
       const bounds = window.getBounds()
+      const minimumSize = this.resolveManagerMinimumSize(nextBounds.x, nextBounds.y)
 
       if (
         bounds.x !== nextBounds.x ||
@@ -114,7 +115,7 @@ export class WindowController {
       }
 
       window.setResizable(true)
-      window.setMinimumSize(MANAGER_MIN_WIDTH, MANAGER_MIN_HEIGHT)
+      window.setMinimumSize(minimumSize.width, minimumSize.height)
       window.setMaximumSize(10000, 10000)
       window.setAlwaysOnTop(false)
       window.setIgnoreMouseEvents(false)
@@ -158,16 +159,41 @@ export class WindowController {
   }
 
   private resolveManagerBounds(x: number, y: number): Rectangle {
-    if (this.managerBounds) {
-      return this.managerBounds
-    }
+    const preferredBounds =
+      this.managerBounds
+        ? {
+            ...this.managerBounds,
+            width: Math.max(this.managerBounds.width, DEFAULT_MANAGER_WIDTH),
+            height: Math.max(this.managerBounds.height, DEFAULT_MANAGER_HEIGHT)
+          }
+        : {
+            x: Math.max(0, x - 32),
+            y: Math.max(0, y - 24),
+            width: DEFAULT_MANAGER_WIDTH,
+            height: DEFAULT_MANAGER_HEIGHT
+          }
+
+    return this.normalizeManagerBounds(preferredBounds)
+  }
+
+  private resolveManagerMinimumSize(x: number, y: number): Pick<Rectangle, 'width' | 'height'> {
+    const workArea = screen.getDisplayNearestPoint({ x, y }).workArea
 
     return {
-      x: Math.max(0, x - 32),
-      y: Math.max(0, y - 24),
-      width: DEFAULT_MANAGER_WIDTH,
-      height: DEFAULT_MANAGER_HEIGHT
+      width: Math.min(MANAGER_MIN_WIDTH, workArea.width),
+      height: Math.min(MANAGER_MIN_HEIGHT, workArea.height)
     }
+  }
+
+  private normalizeManagerBounds(bounds: Rectangle): Rectangle {
+    const workArea = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea
+    const minimumSize = this.resolveManagerMinimumSize(bounds.x, bounds.y)
+    const width = Math.min(Math.max(bounds.width, minimumSize.width), workArea.width)
+    const height = Math.min(Math.max(bounds.height, minimumSize.height), workArea.height)
+    const x = Math.min(Math.max(bounds.x, workArea.x), workArea.x + workArea.width - width)
+    const y = Math.min(Math.max(bounds.y, workArea.y), workArea.y + workArea.height - height)
+
+    return { x, y, width, height }
   }
 
   private registerWindowEvents(): void {
@@ -193,11 +219,7 @@ export class WindowController {
         const mode = this.store.getSnapshot().settings.overlay.mode
 
         if (mode === 'manager') {
-          this.managerBounds = {
-            ...this.resolveManagerBounds(bounds.x, bounds.y),
-            x: bounds.x,
-            y: bounds.y
-          }
+          this.managerBounds = this.normalizeManagerBounds(bounds)
         }
 
         void this.store.setOverlayPosition(bounds.x, bounds.y).catch(() => undefined)
@@ -224,7 +246,7 @@ export class WindowController {
           return
         }
 
-        this.managerBounds = bounds
+        this.managerBounds = this.normalizeManagerBounds(bounds)
       }, 120)
     })
   }
