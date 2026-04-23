@@ -136,6 +136,7 @@ export default function App(): JSX.Element {
         incrementFlashKey={incrementFlashKey}
         isLocked={snapshot.settings.overlay.locked}
         onOpenManager={() => void runAction(() => window.knittingCounter.setMode({ mode: 'manager' }))}
+        onQuitApp={() => void runAction(() => window.knittingCounter.quitApp())}
       />
     )
   }
@@ -156,6 +157,7 @@ export default function App(): JSX.Element {
       onResetProject={(projectId) => runAction(() => window.knittingCounter.resetProject({ projectId }))}
       onSelectProject={(projectId) => runAction(() => window.knittingCounter.setActiveProject({ projectId }))}
       onSetLocked={(locked) => runAction(() => window.knittingCounter.setOverlayLocked({ locked }))}
+      onQuitApp={() => runAction(() => window.knittingCounter.quitApp())}
       snapshot={snapshot}
     />
   )

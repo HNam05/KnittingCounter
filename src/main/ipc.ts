@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc'
 import type {
   AppSnapshot,
@@ -98,6 +98,7 @@ export function registerIpcHandlers(store: AppStore, getWindow: WindowGetter, bu
   ipcMain.removeHandler(IPC_CHANNELS.nextProject)
   ipcMain.removeHandler(IPC_CHANNELS.setMode)
   ipcMain.removeHandler(IPC_CHANNELS.setOverlayLocked)
+  ipcMain.removeHandler(IPC_CHANNELS.quitApp)
 
   ipcMain.handle(IPC_CHANNELS.getState, (event) => {
     assertTrustedEvent(event, getWindow, bundledRendererPath)
@@ -154,6 +155,10 @@ export function registerIpcHandlers(store: AppStore, getWindow: WindowGetter, bu
   ipcMain.handle(IPC_CHANNELS.setOverlayLocked, (event, input: SetOverlayLockedInput) => {
     assertTrustedEvent(event, getWindow, bundledRendererPath)
     return store.setOverlayLocked(readLocked(input))
+  })
+  ipcMain.handle(IPC_CHANNELS.quitApp, (event) => {
+    assertTrustedEvent(event, getWindow, bundledRendererPath)
+    app.quit()
   })
 }
 

@@ -34,7 +34,8 @@ const api: KnittingCounterApi = {
   decrementActiveProject: () => ipcRenderer.invoke(IPC_CHANNELS.decrementActiveProject),
   nextProject: () => ipcRenderer.invoke(IPC_CHANNELS.nextProject),
   setMode: (input: SetModeInput) => ipcRenderer.invoke(IPC_CHANNELS.setMode, input),
-  setOverlayLocked: (input: SetOverlayLockedInput) => ipcRenderer.invoke(IPC_CHANNELS.setOverlayLocked, input)
+  setOverlayLocked: (input: SetOverlayLockedInput) => ipcRenderer.invoke(IPC_CHANNELS.setOverlayLocked, input),
+  quitApp: () => ipcRenderer.invoke(IPC_CHANNELS.quitApp)
 }
 
 contextBridge.exposeInMainWorld('knittingCounter', api)

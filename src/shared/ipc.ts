@@ -10,5 +10,6 @@ export const IPC_CHANNELS = {
   decrementActiveProject: 'projects:decrement-active',
   nextProject: 'projects:next',
   setMode: 'overlay:set-mode',
-  setOverlayLocked: 'overlay:set-locked'
+  setOverlayLocked: 'overlay:set-locked',
+  quitApp: 'app:quit'
 } as const

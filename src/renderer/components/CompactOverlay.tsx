@@ -7,6 +7,7 @@ interface CompactOverlayProps {
   isLocked: boolean
   incrementFlashKey: number
   onOpenManager: () => void
+  onQuitApp: () => void
 }
 
 export function CompactOverlay({
@@ -16,6 +17,7 @@ export function CompactOverlay({
   isLocked,
   incrementFlashKey,
   onOpenManager,
+  onQuitApp
 }: CompactOverlayProps): JSX.Element {
   const hotkeyLine = `F8 +1  ·  F7 -1${hasMultipleProjects ? '  ·  F6 next' : ''}  ·  F9 manager`
   const statusLine = isLocked
@@ -26,6 +28,21 @@ export function CompactOverlay({
 
   return (
     <main className={`app-shell compact-shell${isLocked ? ' compact-shell--locked' : ''}`} onDoubleClick={isLocked ? undefined : onOpenManager}>
+      {!isLocked ? (
+        <button
+          aria-label="Close app"
+          className="compact-close-button no-drag"
+          onClick={(event) => {
+            event.stopPropagation()
+            onQuitApp()
+          }}
+          title="Close app"
+          type="button"
+        >
+          X
+        </button>
+      ) : null}
+
       {incrementFlashKey > 0 ? (
         <img
           key={incrementFlashKey}

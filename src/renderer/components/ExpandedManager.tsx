@@ -20,6 +20,7 @@ interface ExpandedManagerProps {
   onDecrement: () => Promise<void>
   onCollapse: () => Promise<void>
   onSetLocked: (locked: boolean) => Promise<void>
+  onQuitApp: () => Promise<void>
 }
 
 export function ExpandedManager({
@@ -37,7 +38,8 @@ export function ExpandedManager({
   onIncrement,
   onDecrement,
   onCollapse,
-  onSetLocked
+  onSetLocked,
+  onQuitApp
 }: ExpandedManagerProps): JSX.Element {
   const [newProjectName, setNewProjectName] = useState('')
   const [renameValue, setRenameValue] = useState(activeProject?.name ?? '')
@@ -110,6 +112,9 @@ export function ExpandedManager({
           </label>
           <button className="ghost-button" onClick={() => void onCollapse()} type="button">
             Compact mode
+          </button>
+          <button className="danger-button" onClick={() => void onQuitApp()} type="button">
+            Close app
           </button>
         </div>
       </header>

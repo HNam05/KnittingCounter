@@ -1,0 +1,22 @@
+Knitting Counter Overlay
+========================
+
+How to start:
+
+1. Extract this ZIP file first.
+2. Open the extracted folder.
+3. Double-click "Knitting Counter Overlay.exe".
+
+If Windows shows a blue warning:
+
+1. Click "More info".
+2. Click "Run anyway".
+
+Why the warning appears:
+
+This is a small personal app and the file is not code-signed yet. The app works offline and stores its knitting projects locally on this computer.
+
+How to close the app:
+
+- In compact mode, click the small X button in the top-right corner.
+- In manager mode, click "Close app".

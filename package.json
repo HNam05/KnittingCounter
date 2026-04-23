@@ -22,6 +22,12 @@
       "out/**/*",
       "package.json"
     ],
+    "extraFiles": [
+      {
+        "from": "distribution/START_HERE.txt",
+        "to": "START_HERE.txt"
+      }
+    ],
     "asar": true,
     "win": {
       "target": [

@@ -22,4 +22,5 @@ export interface KnittingCounterApi {
   nextProject: () => Promise<AppSnapshot>
   setMode: (input: SetModeInput) => Promise<AppSnapshot>
   setOverlayLocked: (input: SetOverlayLockedInput) => Promise<AppSnapshot>
+  quitApp: () => Promise<void>
 }
